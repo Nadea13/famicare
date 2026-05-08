@@ -31,10 +31,12 @@ async def lifespan(app: FastAPI):
     logger.info(f"   Environment: {settings.APP_ENV}")
 
     # Create all tables (dev only — use Alembic in production)
-    if settings.APP_ENV == "development":
-        async with engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
-            logger.info("✅ Database tables created/verified")
+    # Note: Disabled in favor of Alembic migrations
+    # if settings.APP_ENV == "development":
+    #     async with engine.begin() as conn:
+    #         await conn.run_sync(Base.metadata.create_all)
+    #         logger.info("✅ Database tables created/verified")
+
 
     yield
 
