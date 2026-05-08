@@ -32,7 +32,7 @@ services:
     container_name: famicare-pgadmin
     restart: unless-stopped
     environment:
-      PGADMIN_DEFAULT_EMAIL: admin@famicare.local
+      PGADMIN_DEFAULT_EMAIL: admin@famicare.com
       PGADMIN_DEFAULT_PASSWORD: admin
     ports:
       - "5050:80"
@@ -63,24 +63,6 @@ services:
         condition: service_healthy
     volumes:
       - ./backend/uploads:/app/uploads
-    networks:
-      - famicare-network
-
-  # ──────────────────────────────────────────────
-  # Frontend (Next.js)
-  # ──────────────────────────────────────────────
-  frontend:
-    build: ./frontend
-    container_name: famicare-frontend
-    restart: unless-stopped
-    ports:
-      - "3000:3000"
-    environment:
-      NEXT_PUBLIC_API_URL: http://localhost:8000
-      # For server-side calls within docker network
-      INTERNAL_API_URL: http://backend:8000
-    depends_on:
-      - backend
     networks:
       - famicare-network
 

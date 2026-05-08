@@ -20,8 +20,15 @@ logger = logging.getLogger(__name__)
 settings = get_settings()
 
 # ── Initialize Gemini Client ────────────────────────────────
-client = genai.Client(api_key=settings.GOOGLE_API_KEY)
 MODEL_NAME = "gemini-1.5-flash"
+
+
+def get_genai_client() -> genai.Client | None:
+    """Returns a GenAI client if an API key is provided, else None."""
+    if not settings.GOOGLE_API_KEY or settings.GOOGLE_API_KEY.startswith("your_"):
+        return None
+    return genai.Client(api_key=settings.GOOGLE_API_KEY)
+
 
 # ─────────────────────────────────────────────────────────────
 # System Prompts
@@ -139,6 +146,35 @@ async def extract_health_log(image_bytes: bytes) -> HealthLogAIExtract:
         )
 
     # ── Production mode — call Gemini AI ─────────────────────
+    client = get_genai_client()
+    if not client:
+        logger.warning("Google AI client could not be initialized. Using mock mode.")
+        # Re-using the same mock logic if client is None
+        return HealthLogAIExtract(
+            measured_at="2025-03-15",
+            weight=65.5,
+            pulse=72,
+            bp_1_sys=138,
+            bp_1_dia=88,
+            bp_2_sys=132,
+            bp_2_dia=84,
+            symptoms="ไม่มีอาการผิดปกติ",
+            treatment_raw="Metformin 500mg 1x3 pc, Amlodipine 5mg 1x1 pc เช้า",
+            treatment_meds=[
+                {
+                    "medicine_name": "Metformin 500mg",
+                    "dosage": "1x3",
+                    "instruction": "หลังอาหาร 3 เวลา",
+                },
+                {
+                    "medicine_name": "Amlodipine 5mg",
+                    "dosage": "1x1",
+                    "instruction": "หลังอาหารเช้า",
+                },
+            ],
+            next_appointment="2025-06-15",
+        )
+
     response = client.models.generate_content(
         model=MODEL_NAME,
         contents=[
@@ -152,6 +188,7 @@ async def extract_health_log(image_bytes: bytes) -> HealthLogAIExtract:
             temperature=0.1,  # Low temperature for accuracy
         ),
     )
+
 
     # Parse the structured response
     result = HealthLogAIExtract.model_validate_json(response.text)
@@ -201,6 +238,32 @@ async def extract_medications(image_bytes: bytes) -> list[MedicationAIExtract]:
         ]
 
     # ── Production mode — call Gemini AI ─────────────────────
+    client = get_genai_client()
+    if not client:
+        logger.warning("Google AI client could not be initialized. Using mock mode.")
+        return [
+            MedicationAIExtract(
+                medicine_name="Metformin 500mg",
+                dosage="500mg",
+                instruction_code="pc",
+                instruction_thai="รับประทานครั้งละ 1 เม็ด หลังอาหาร 3 เวลา",
+                indication="ควบคุมระดับน้ำตาลในเลือด (เบาหวาน)",
+                warning="รับประทานพร้อมอาหารเพื่อลดอาการระคายกระเพาะ",
+                current_quantity=90,
+                unit="เม็ด",
+            ),
+            MedicationAIExtract(
+                medicine_name="Amlodipine 5mg",
+                dosage="5mg",
+                instruction_code="pc",
+                instruction_thai="รับประทานครั้งละ 1 เม็ด หลังอาหารเช้า",
+                indication="ลดความดันโลหิตสูง",
+                warning="อาจทำให้เท้าบวม หากมีอาการให้แจ้งแพทย์",
+                current_quantity=30,
+                unit="เม็ด",
+            ),
+        ]
+
     response = client.models.generate_content(
         model=MODEL_NAME,
         contents=[
@@ -215,6 +278,7 @@ async def extract_medications(image_bytes: bytes) -> list[MedicationAIExtract]:
             temperature=0.1,
         ),
     )
+
 
     # Parse the structured response
     result = MedicationBatchAIExtract.model_validate_json(response.text)

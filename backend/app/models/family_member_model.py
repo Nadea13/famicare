@@ -6,6 +6,7 @@ Maps the Many-to-Many relationship between User and Patient
 with an extra 'relationship' field describing the family connection.
 """
 
+import uuid
 from sqlalchemy import ForeignKey, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -26,12 +27,12 @@ class FamilyMember(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
     __tablename__ = "family_members"
 
-    user_id: Mapped["uuid.UUID"] = mapped_column(
+    user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
     )
-    patient_id: Mapped["uuid.UUID"] = mapped_column(
+    patient_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("patients.id", ondelete="CASCADE"),
         nullable=False,
@@ -47,6 +48,3 @@ class FamilyMember(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     def __repr__(self) -> str:
         return f"<FamilyMember user={self.user_id} → patient={self.patient_id}>"
 
-
-# Required for type annotation
-import uuid  # noqa: E402
