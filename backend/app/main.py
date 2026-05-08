@@ -69,9 +69,21 @@ app.add_middleware(
 app.mount("/uploads", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads")
 
 # ── Routers ──────────────────────────────────────────────────
+from app.routers import (
+    line_webhook_router,
+    health_log_router,
+    auth_router,
+    patient_router,
+    family_member_router,
+    dashboard_router
+)
+
 app.include_router(line_webhook_router)
 app.include_router(health_log_router)
 app.include_router(auth_router)
+app.include_router(patient_router)
+app.include_router(family_member_router)
+app.include_router(dashboard_router)
 
 
 # ── Health Check ─────────────────────────────────────────────

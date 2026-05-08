@@ -10,7 +10,7 @@ import enum
 from sqlalchemy import Enum, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.models.base_model import Base, TimestampMixin, UUIDPrimaryKeyMixin
+from app.models.base_model import Base, TimestampMixin, UUIDPrimaryKeyMixin, SoftDeleteMixin
 
 
 class UserRole(str, enum.Enum):
@@ -20,7 +20,7 @@ class UserRole(str, enum.Enum):
     ADMIN = "admin"
 
 
-class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+class User(UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin, Base):
     """
     A registered user identified by their LINE user ID.
 
@@ -44,6 +44,9 @@ class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     )
     picture_url: Mapped[str | None] = mapped_column(
         String(512), nullable=True
+    )
+    primary_patient_id: Mapped[str | None] = mapped_column(
+        String(36), nullable=True, doc="Currently active patient profile"
     )
 
     # ── Relationships ────────────────────────────────────────

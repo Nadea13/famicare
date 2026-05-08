@@ -88,3 +88,32 @@ async def send_line_reply(reply_token: str, message: str) -> None:
         response.raise_for_status()
 
     logger.info(f"Reply sent to LINE (token: {reply_token[:8]}...)")
+
+
+async def get_line_profile(user_id: str) -> dict:
+    """
+    Fetch user profile (display name, picture) from LINE.
+
+    Args:
+        user_id: LINE user ID.
+
+    Returns:
+        Dict with displayName and pictureUrl.
+    """
+    # ── Mock mode ────────────────────────────────────────────
+    if not settings.LINE_CHANNEL_ACCESS_TOKEN or settings.LINE_CHANNEL_ACCESS_TOKEN.startswith("your_"):
+        return {
+            "displayName": f"User_{user_id[:6]}",
+            "pictureUrl": "https://via.placeholder.com/150"
+        }
+
+    # ── Production mode ──────────────────────────────────────
+    url = f"https://api.line.me/v2/bot/profile/{user_id}"
+    headers = {"Authorization": f"Bearer {settings.LINE_CHANNEL_ACCESS_TOKEN}"}
+
+    async with httpx.AsyncClient() as client:
+        response = await client.get(url, headers=headers, timeout=10.0)
+        if response.status_code != 200:
+            logger.error(f"Failed to fetch LINE profile for {user_id}: {response.text}")
+            return {"displayName": "LINE User", "pictureUrl": None}
+        return response.json()

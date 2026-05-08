@@ -7,13 +7,13 @@ Represents an elderly family member whose health is being tracked.
 
 from datetime import date
 
-from sqlalchemy import ARRAY, Date, String
+from sqlalchemy import ARRAY, Date, String, Boolean
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.models.base_model import Base, TimestampMixin, UUIDPrimaryKeyMixin
+from app.models.base_model import Base, TimestampMixin, UUIDPrimaryKeyMixin, SoftDeleteMixin
 
 
-class Patient(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+class Patient(UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin, Base):
     """
     A patient (elderly relative) whose health data is tracked.
 
@@ -37,6 +37,9 @@ class Patient(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     )
     hn_number: Mapped[str | None] = mapped_column(
         String(50), nullable=True
+    )
+    birth_year_only: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="false", nullable=False
     )
 
     # ── Relationships ────────────────────────────────────────

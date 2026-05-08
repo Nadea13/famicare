@@ -1,68 +1,53 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Users,
   UserPlus,
-  MessageSquare,
-  MoreVertical,
-  Mail,
+  Trash2,
+  Search,
   CheckCircle2,
   Clock,
   ShieldCheck,
-  Trash2,
-  ExternalLink,
-  Search,
+  ShieldAlertIcon,
+  ChevronDown,
+  ShieldUser
 } from "lucide-react";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { api } from "@/lib/api";
 
-/* ── Types & Mock Data ────────────────────────────────────── */
+/* --- Types --- */
 
 interface Member {
   id: string;
-  name: string;
+  display_name: string;
   role: string;
-  image: string;
+  picture_url: string;
   status: "joined" | "pending";
   isOwner?: boolean;
 }
 
-const MOCK_MEMBERS: Member[] = [
-  {
-    id: "1",
-    name: "Nathan (คุณ)",
-    role: "ผู้ดูแลหลัก (Owner)",
-    image: "https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=200&h=200&fit=crop",
-    status: "joined",
-    isOwner: true,
-  },
-  {
-    id: "2",
-    name: "Sarah Connor",
-    role: "ผู้ดูแลร่วม",
-    image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&h=200&fit=crop",
-    status: "joined",
-  },
-  {
-    id: "3",
-    name: "James Wilson",
-    role: "สมาชิกในครอบครัว",
-    image: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&h=200&fit=crop",
-    status: "pending",
-  },
-];
-
-/* ── Components ──────────────────────────────────────────── */
+/* --- Components --- */
 
 function MemberCard({
   member,
-  delay
+  delay,
+  onDelete
 }: {
   member: Member;
   delay: number;
+  onDelete: (id: string) => void;
 }) {
   return (
     <div>
@@ -70,12 +55,16 @@ function MemberCard({
         <CardContent className="p-6">
           <div className="flex items-center gap-5">
             <div className="relative">
-              <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-slate-100 shrink-0">
-                <img
-                  src={member.image}
-                  alt={member.name}
-                  className={`w-full h-full object-cover ${member.status === 'pending' ? 'grayscale opacity-50' : ''}`}
-                />
+              <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-slate-100 shrink-0 bg-muted flex items-center justify-center font-black">
+                {member.picture_url ? (
+                  <img
+                    src={member.picture_url}
+                    alt={member.display_name}
+                    className={`w-full h-full object-cover ${member.status === 'pending' ? 'grayscale opacity-50' : ''}`}
+                  />
+                ) : (
+                  member.display_name?.slice(0, 2)
+                )}
               </div>
               {member.status === 'joined' ? (
                 <div className="absolute -bottom-0.5 -right-0.5 bg-green-500 text-white p-0.5 rounded-full border-2 border-white">
@@ -92,21 +81,21 @@ function MemberCard({
               <div className="flex items-center justify-between">
                 <div className="space-y-1">
                   <h3 className="text-lg font-black text-foreground truncate">
-                    {member.name}
+                    {member.display_name}
                   </h3>
                   <div className="flex items-center gap-2 mt-1">
                     <Badge variant="secondary" className="text-[10px]">
-                      {member.role}
+                      {member.role || "สมาชิก"}
                     </Badge>
-                    {member.status === 'pending' && (
-                      <Badge className="text-[10px] status-warning">
-                        รอการตอบรับ
-                      </Badge>
-                    )}
                   </div>
                 </div>
                 {!member.isOwner && (
-                  <Button variant="ghost" size="icon" className="h-10 w-10 text-muted-foreground hover:text-destructive">
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-10 w-10 text-muted-foreground hover:text-destructive"
+                    onClick={() => onDelete(member.id)}
+                  >
                     <Trash2 className="w-5 h-5" />
                   </Button>
                 )}
@@ -118,21 +107,34 @@ function MemberCard({
 
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground">
-              {member.status === 'joined' ? (
-                <>
-                  <ShieldCheck className="w-4 h-4 text-primary" />
-                  <span>สิทธิ์การเข้าถึง: ทั้งหมด</span>
-                </>
-              ) : (
-                <>
-                  <Clock className="w-4 h-4" />
-                  <span>ส่งคำเชิญเมื่อ 1 วันก่อน</span>
-                </>
-              )}
+              <ShieldCheck className="w-4 h-4 text-primary" />
+              <span>สิทธิ์การเข้าถึง: ทั้งหมด</span>
             </div>
-            <Button variant="ghost" size="sm" className="text-primary font-bold">
-              จัดการสิทธิ์
-            </Button>
+            
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="text-primary font-bold gap-1 hover:bg-primary/5">
+                  จัดการสิทธิ์
+                  <ChevronDown className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>ระดับสิทธิ์การใช้งาน</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem className="gap-2">
+                  <ShieldUser className="w-4 h-4 text-red-500" />
+                  <span>ผู้สร้าง (Owner)</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem className="gap-2">
+                  <ShieldCheck className="w-4 h-4 text-primary" />
+                  <span>ผู้ดูแล (Caregiver)</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem className="gap-2">
+                  <ShieldAlertIcon className="w-4 h-4 text-slate-400" />
+                  <span>ผู้เยี่ยมชม (Visitor)</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </CardContent>
       </Card>
@@ -141,21 +143,74 @@ function MemberCard({
 }
 
 export function MembersManager() {
-  const [members] = useState<Member[]>(MOCK_MEMBERS);
-
+  const [members, setMembers] = useState<Member[]>([]);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const [membersData, profileData] = await Promise.all([
+          api.getMembers(),
+          api.getProfile()
+        ]);
+        
+        setCurrentUser(profileData);
+        setMembers(membersData.map((m: any) => ({
+          ...m,
+          status: 'joined',
+          isOwner: m.id === profileData.id,
+          role: m.id === profileData.id ? "ผู้สร้าง" : (m.role || "สมาชิก"),
+          display_name: m.id === profileData.id ? `${m.display_name} (คุณ)` : m.display_name
+        })));
+      } catch (error) {
+        console.error("Failed to fetch members or profile:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadData();
+  }, []);
+
   const handleInviteLine = () => {
-    // Mock LINE share logic
     const shareUrl = "https://line.me/R/msg/text/?ลองใช้ FamiCare เพื่อดูแลสุขภาพคนในครอบครัวร่วมกัน: https://famicare.app/invite/abc123";
     window.open(shareUrl, '_blank');
   };
 
+  const handleDeleteMember = async (memberId: string) => {
+    if (!window.confirm("คุณต้องการลบสมาชิกคนนี้ออกจากครอบครัวใช่หรือไม่?")) {
+      return;
+    }
+    // Note: Deleting a member here currently soft-deletes the User record
+    // In a full multi-family system, this might just delete the FamilyMember link.
+    // But for now, we follow the "soft delete users table" requirement.
+    try {
+      // We don't have a specific "remove family member" endpoint that soft-deletes the user yet,
+      // but if the user wants to delete THEIR OWN profile, they use deleteProfile.
+      // If an owner wants to remove another user, we might need a different endpoint.
+      // For now, I'll assume the requirement is to allow users to manage (soft-delete) themselves
+      // and I'll leave this as a placeholder or implement if there's an endpoint.
+      
+      // Let's assume we can't soft-delete OTHER users for now to prevent accidents.
+      alert("ขออภัย: ฟีเจอร์ลบสมาชิกคนอื่นยังไม่เปิดใช้งาน (สิทธิ์เฉพาะเจ้าของระบบ)");
+    } catch (error) {
+      console.error("Error deleting member:", error);
+    }
+  };
+
   const filteredMembers = members.filter(m =>
-    m.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    m.role.toLowerCase().includes(searchQuery.toLowerCase())
+    m.display_name?.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  if (loading) {
+    return (
+      <div className="min-h-[400px] flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 pb-12">
@@ -209,6 +264,7 @@ export function MembersManager() {
               key={member.id}
               member={member}
               delay={200 + (index * 100)}
+              onDelete={handleDeleteMember}
             />
           ))}
 

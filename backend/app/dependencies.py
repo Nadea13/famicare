@@ -5,6 +5,9 @@ Application settings loaded from environment variables via pydantic-settings.
 Provides a cached singleton so settings are read once at startup.
 """
 
+from fastapi import Depends, HTTPException, status
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from sqlalchemy.ext.asyncio import AsyncSession
 from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -17,7 +20,7 @@ class Settings(BaseSettings):
     """
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=(".env", ".env.local"),
         env_file_encoding="utf-8",
         case_sensitive=True,
     )
@@ -45,8 +48,38 @@ class Settings(BaseSettings):
     # ── File Storage ─────────────────────────────────────────
     UPLOAD_DIR: str = "./uploads"
 
+    # ── Authentication ───────────────────────────────────────
+    JWT_SECRET: str = "super_secret_key_change_me_in_production"
+    JWT_ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
+
 
 @lru_cache
 def get_settings() -> Settings:
     """Returns a cached Settings singleton."""
     return Settings()
+
+
+# ── Auth Dependency ───────────────────────────────────────────
+security = HTTPBearer()
+
+async def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    settings: Settings = Depends(get_settings)
+) -> dict:
+    """
+    Dependency to validate JWT token and return the payload.
+    """
+    from app.services.auth_service import verify_token
+    
+    token = credentials.credentials
+    payload = verify_token(token)
+    
+    if not payload:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    return payload

@@ -58,10 +58,13 @@ services:
       FRONTEND_URL: http://localhost:3000
       UPLOAD_DIR: /app/uploads
       # Add other secrets as needed via .env or directly here
+    env_file:
+      - ./backend/.env.local
     depends_on:
       postgres:
         condition: service_healthy
     volumes:
+      - ./backend/app:/app/app
       - ./backend/uploads:/app/uploads
     networks:
       - famicare-network

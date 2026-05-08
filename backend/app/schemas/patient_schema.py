@@ -21,6 +21,7 @@ class PatientCreate(BaseModel):
     )
     hospital_name: str | None = Field(None, max_length=255)
     hn_number: str | None = Field(None, max_length=50, description="Hospital Number")
+    birth_year_only: bool = Field(False)
 
 
 class PatientResponse(BaseModel):
@@ -32,7 +33,9 @@ class PatientResponse(BaseModel):
     underlying_diseases: list[str] | None
     hospital_name: str | None
     hn_number: str | None
+    birth_year_only: bool
     created_at: datetime
     updated_at: datetime
+    deleted_at: datetime | None = None
 
     model_config = {"from_attributes": True}

@@ -3,7 +3,7 @@ line_webhook.py
 ───────────────
 LINE Messaging API webhook endpoint.
 Handles incoming events from LINE, processes image messages,
-and triggers AI extraction for health data.
+and triggers AI extraction for health data with DB persistence.
 """
 
 import hashlib
@@ -12,12 +12,16 @@ import base64
 import json
 import logging
 
-from fastapi import APIRouter, Header, HTTPException, Request
+from fastapi import APIRouter, Header, HTTPException, Request, Depends
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies import get_settings
-from app.services.line_service import download_line_image, send_line_reply
-from app.services.extract_health_data import extract_health_log, extract_medications
+from app.database_config import get_db
+from app.services.line_service import download_line_image, send_line_reply, get_line_profile
+from app.services.extract_health_data import extract_health_log
 from app.services.storage_service import get_storage_service
+from app.services.user_service import get_or_create_line_user, get_patient_for_user, create_default_patient
+from app.services.health_log_service import save_health_log
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -25,18 +29,8 @@ router = APIRouter(tags=["LINE Webhook"])
 
 
 def verify_signature(body: bytes, signature: str) -> bool:
-    """
-    Verify the LINE webhook signature using HMAC-SHA256.
-
-    Args:
-        body: Raw request body bytes.
-        signature: The x-line-signature header value.
-
-    Returns:
-        True if signature is valid.
-    """
+    """Verify the LINE webhook signature using HMAC-SHA256."""
     if not settings.LINE_CHANNEL_SECRET or settings.LINE_CHANNEL_SECRET.startswith("your_"):
-        logger.warning("LINE_CHANNEL_SECRET not configured. Skipping signature verification.")
         return True
 
     hash_value = hmac.new(
@@ -52,26 +46,14 @@ def verify_signature(body: bytes, signature: str) -> bool:
 async def handle_webhook(
     request: Request,
     x_line_signature: str = Header(default=""),
+    db: AsyncSession = Depends(get_db),
 ):
-    """
-    LINE Messaging API webhook endpoint.
-
-    Receives events from LINE platform, validates signature,
-    and processes image messages through AI extraction.
-
-    Flow:
-    1. Validate x-line-signature header.
-    2. Parse event body.
-    3. For image messages: download → save → AI extract → reply with summary.
-    4. For text messages: reply with usage instructions.
-    """
-    # ── 1. Read and validate the raw body ────────────────────
+    """LINE Messaging API webhook endpoint."""
     body = await request.body()
 
     if not verify_signature(body, x_line_signature):
         raise HTTPException(status_code=400, detail="Invalid signature")
 
-    # ── 2. Parse the event payload ───────────────────────────
     try:
         payload = json.loads(body)
     except json.JSONDecodeError:
@@ -80,24 +62,19 @@ async def handle_webhook(
     events = payload.get("events", [])
     logger.info(f"Received {len(events)} event(s) from LINE")
 
-    # ── 3. Process each event ────────────────────────────────
     for event in events:
         event_type = event.get("type")
         reply_token = event.get("replyToken", "")
+        user_id = event.get("source", {}).get("userId", "unknown")
 
         if event_type == "message":
             message = event.get("message", {})
             message_type = message.get("type")
             message_id = message.get("id")
-            user_id = event.get("source", {}).get("userId", "unknown")
-
-            logger.info(
-                f"Message event: type={message_type}, "
-                f"id={message_id}, user={user_id}"
-            )
 
             if message_type == "image":
                 await _handle_image_message(
+                    db=db,
                     message_id=message_id,
                     user_id=user_id,
                     reply_token=reply_token,
@@ -106,21 +83,24 @@ async def handle_webhook(
                 text = message.get("text", "")
                 await _handle_text_message(
                     text=text,
-                    user_id=user_id,
                     reply_token=reply_token,
                 )
-            else:
-                logger.info(f"Ignoring message type: {message_type}")
 
         elif event_type == "follow":
-            # User added the bot as a friend
+            # User added the bot as a friend -> Register them
+            profile = await get_line_profile(user_id)
+            await get_or_create_line_user(
+                db, 
+                user_id, 
+                display_name=profile.get("displayName"),
+                picture_url=profile.get("pictureUrl")
+            )
+            
             await send_line_reply(
                 reply_token,
-                "🏥 สวัสดีค่ะ! ยินดีต้อนรับสู่ FamiCare\n\n"
+                f"🏥 สวัสดีค่ะคุณ {profile.get('displayName', '')}! ยินดีต้อนรับสู่ FamiCare\n\n"
                 "ส่งรูปถ่ายสมุดสุขภาพ (สมุด NCD) หรือซองยา "
                 "มาให้เราได้เลยนะคะ\n\n"
-                "📋 สมุดสุขภาพ → บันทึกค่าความดัน, น้ำหนัก\n"
-                "💊 ซองยา → บันทึกรายการยาที่ได้รับ\n\n"
                 "เริ่มต้นโดยถ่ายรูปส่งมาเลยค่ะ! 📸",
             )
 
@@ -128,36 +108,48 @@ async def handle_webhook(
 
 
 async def _handle_image_message(
+    db: AsyncSession,
     message_id: str,
     user_id: str,
     reply_token: str,
 ) -> None:
-    """
-    Process an image message:
-    1. Download the image from LINE.
-    2. Save to local storage.
-    3. Run AI extraction for health data.
-    4. Reply with a formatted summary.
-    """
+    """Process image message and save to DB."""
     try:
-        # Download image from LINE
-        image_bytes = await download_line_image(message_id)
-        logger.info(f"Downloaded image: {len(image_bytes)} bytes")
+        # 1. Get or Create User & Patient
+        profile = await get_line_profile(user_id)
+        user = await get_or_create_line_user(
+            db, 
+            user_id, 
+            display_name=profile.get("displayName"),
+            picture_url=profile.get("pictureUrl")
+        )
+        
+        patient = await get_patient_for_user(db, user.id)
+        if not patient:
+            patient = await create_default_patient(db, user)
 
-        # Save to storage
+        # 2. Download and Save Image
+        image_bytes = await download_line_image(message_id)
         storage = get_storage_service()
         image_path = await storage.save(
             data=image_bytes,
             filename=f"line_{message_id}.jpg",
             content_type="image/jpeg",
         )
-        logger.info(f"Image saved at: {image_path}")
 
-        # Extract health data using AI
+        # 3. AI Extract
         health_data = await extract_health_log(image_bytes)
 
-        # Format reply message
-        reply = _format_health_log_reply(health_data)
+        # 4. Save to Database
+        await save_health_log(
+            db=db,
+            patient_id=patient.id,
+            extracted_data=health_data,
+            image_url=image_path
+        )
+
+        # 5. Reply to user
+        reply = _format_health_log_reply(health_data, patient.name)
         await send_line_reply(reply_token, reply)
 
     except Exception as e:
@@ -171,7 +163,6 @@ async def _handle_image_message(
 
 async def _handle_text_message(
     text: str,
-    user_id: str,
     reply_token: str,
 ) -> None:
     """Handle text messages with usage instructions."""
@@ -192,9 +183,9 @@ async def _handle_text_message(
         )
 
 
-def _format_health_log_reply(data) -> str:
+def _format_health_log_reply(data, patient_name: str) -> str:
     """Format extracted health data into a readable LINE message."""
-    lines = ["✅ อ่านข้อมูลสุขภาพสำเร็จ!\n"]
+    lines = [f"✅ บันทึกข้อมูลสุขภาพของ {patient_name} สำเร็จ!\n"]
 
     if data.measured_at:
         lines.append(f"📅 วันที่ตรวจ: {data.measured_at}")
@@ -208,13 +199,9 @@ def _format_health_log_reply(data) -> str:
         lines.append(f"🩺 ความดัน (ครั้งที่ 2): {data.bp_2_sys}/{data.bp_2_dia} mmHg")
     if data.symptoms:
         lines.append(f"🤒 อาการ: {data.symptoms}")
-    if data.treatment_meds:
-        lines.append("\n💊 ยาที่ได้รับ:")
-        for med in data.treatment_meds:
-            name = med.get("medicine_name", med.medicine_name if hasattr(med, "medicine_name") else "?")
-            lines.append(f"  • {name}")
+    
     if data.next_appointment:
         lines.append(f"\n📆 นัดครั้งถัดไป: {data.next_appointment}")
 
-    lines.append("\n🌐 ดูข้อมูลเพิ่มเติมได้ที่ Dashboard")
+    lines.append("\n🌐 ดูข้อมูลย้อนหลังได้ที่ Web Dashboard")
     return "\n".join(lines)

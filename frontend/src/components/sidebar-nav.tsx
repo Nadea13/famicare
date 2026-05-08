@@ -1,10 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import {
   Sheet,
   SheetContent,
@@ -27,8 +26,9 @@ import {
   Search,
   UserPlus,
 } from "lucide-react";
+import { api } from "@/lib/api";
 
-/* ── Navigation Items ────────────────────────────────────── */
+/* --- Navigation Items --- */
 
 const navItems = [
   { href: "/home", label: "หน้าหลัก", icon: Home },
@@ -44,10 +44,28 @@ const secondaryNavItems = [
   { href: "/logout", label: "ออกจากระบบ", icon: LogOut },
 ];
 
-/* ── Sidebar Content ─────────────────────────────────────── */
+/* --- Sidebar Content --- */
 
 function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
+  const [user, setUser] = useState<{ display_name: string; picture_url: string; role: string } | null>(null);
+
+  useEffect(() => {
+    async function loadProfile() {
+      try {
+        const profile = await api.getProfile();
+        if (profile) {
+          setUser({
+            ...profile,
+            role: "ผู้สร้าง"
+          });
+        }
+      } catch (error) {
+        console.error("Failed to load sidebar profile:", error);
+      }
+    }
+    loadProfile();
+  }, []);
 
   return (
     <div className="flex flex-col h-full border-r space-y-3 p-6">
@@ -70,16 +88,24 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
       {/* User Profile Card in Sidebar */}
       <div>
         <div className="flex flex-row items-center bg-card border p-3 gap-3 rounded-md">
-          <div className="w-10 h-10 rounded-full overflow-hidden">
-            <img
-              src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&h=100&fit=crop"
-              alt="User"
-              className="w-full h-full object-cover"
-            />
+          <div className="w-10 h-10 rounded-full overflow-hidden bg-muted flex items-center justify-center font-bold text-xs text-muted-foreground shrink-0">
+            {user?.picture_url ? (
+              <img
+                src={user.picture_url}
+                alt={user.display_name}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              user?.display_name?.slice(0, 2) || "??"
+            )}
           </div>
           <div className="flex-1 overflow-hidden">
-            <p className="text-sm font-bold text-foreground truncate">ยินดีต้อนรับ...</p>
-            <p className="text-[10px] text-muted-foreground font-medium truncate">Clinical Precision</p>
+            <p className="text-sm font-bold text-foreground truncate">
+              {user?.display_name || "กำลังโหลด..."}
+            </p>
+            <p className="text-[10px] text-muted-foreground font-medium truncate uppercase">
+              {user?.role || "FamiCare User"}
+            </p>
           </div>
         </div>
       </div>
@@ -156,11 +182,7 @@ export function SidebarNav() {
       <div className="lg:hidden fixed top-0 inset-x-0 h-16 border-b border-slate-200 bg-white z-30 flex items-center justify-between px-4">
         <div className="flex items-center gap-3">
           <Sheet open={open} onOpenChange={setOpen}>
-            <SheetTrigger
-              render={
-                <Button variant="ghost" size="icon" className="shrink-0 text-slate-600" />
-              }
-            >
+            <SheetTrigger className="lg:hidden p-2 hover:bg-slate-100 rounded-md shrink-0 text-slate-600 transition-colors">
               <LayoutGrid className="h-6 w-6" />
               <span className="sr-only">เปิดเมนู</span>
             </SheetTrigger>

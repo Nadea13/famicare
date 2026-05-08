@@ -24,6 +24,7 @@ MOCK_MEDICATIONS = [
 ]
 
 
+
 @router.get("/health-logs/{patient_id}")
 async def get_health_logs(patient_id: str):
     """Get all health logs for a patient. MVP: returns mock data."""
@@ -43,16 +44,4 @@ async def get_medications(patient_id: str):
     """Get active medications. MVP: returns mock data."""
     if patient_id == MOCK_PATIENT_ID or patient_id == "mock":
         return [m for m in MOCK_MEDICATIONS if m["is_active"]]
-    raise HTTPException(status_code=404, detail="Patient not found")
-
-
-@router.get("/patients/{patient_id}")
-async def get_patient(patient_id: str):
-    """Get patient details. MVP: returns mock data."""
-    if patient_id == MOCK_PATIENT_ID or patient_id == "mock":
-        return {
-            "id": MOCK_PATIENT_ID, "name": "คุณยายสมศรี มีสุข",
-            "date_of_birth": "1950-08-15", "underlying_diseases": ["DM", "HT", "DLP"],
-            "hospital_name": "รพ.สต.บ้านท่าพระ", "hn_number": "HN-12345",
-        }
     raise HTTPException(status_code=404, detail="Patient not found")
