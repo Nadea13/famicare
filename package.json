@@ -1,0 +1,10 @@
+{
+  "name": "famicare-root",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "npm run dev --prefix frontend",
+    "backend": "cd backend && venv\\Scripts\\activate && uvicorn app.main:app --reload",
+    "db": "docker-compose up -d"
+  }
+}

@@ -1,0 +1,191 @@
+"use client";
+
+import React, { useState } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import {
+  Sheet,
+  SheetContent,
+  SheetTrigger,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import { Separator } from "@/components/ui/separator";
+import {
+  LayoutGrid,
+  Users,
+  FileText,
+  BriefcaseMedical,
+  Calendar,
+  Plus,
+  HelpCircle,
+  LogOut,
+  HeartPulse,
+  Home,
+  Bell,
+  Search,
+  UserPlus,
+} from "lucide-react";
+
+/* ── Navigation Items ────────────────────────────────────── */
+
+const navItems = [
+  { href: "/home", label: "หน้าหลัก", icon: Home },
+  { href: "/home/patients", label: "ผู้ป่วย", icon: UserPlus },
+  { href: "/home/members", label: "สมาชิก", icon: Users },
+  { href: "/home/medical-record", label: "ประวัติสุขภาพ", icon: FileText },
+  { href: "/home/medications", label: "รายการยา", icon: BriefcaseMedical },
+  { href: "/home/appointments", label: "การนัดหมาย", icon: Calendar },
+];
+
+const secondaryNavItems = [
+  { href: "/help", label: "ศูนย์ช่วยเหลือ", icon: HelpCircle },
+  { href: "/logout", label: "ออกจากระบบ", icon: LogOut },
+];
+
+/* ── Sidebar Content ─────────────────────────────────────── */
+
+function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
+  const pathname = usePathname();
+
+  return (
+    <div className="flex flex-col h-full border-r space-y-3 p-6">
+      {/* Brand Logo */}
+      <div>
+        <Link
+          href="/home"
+          className="flex items-center gap-2 group"
+          onClick={onNavigate}
+        >
+          <div className="w-10 h-10 rounded-md bg-primary flex items-center justify-center shadow-sm">
+            <HeartPulse className="text-white w-5 h-5 stroke-[2]" />
+          </div>
+          <h1 className="text-xl font-bold tracking-tight text-foreground">
+            FamilyCare
+          </h1>
+        </Link>
+      </div>
+
+      {/* User Profile Card in Sidebar */}
+      <div>
+        <div className="flex flex-row items-center bg-card border p-3 gap-3 rounded-md">
+          <div className="w-10 h-10 rounded-full overflow-hidden">
+            <img
+              src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&h=100&fit=crop"
+              alt="User"
+              className="w-full h-full object-cover"
+            />
+          </div>
+          <div className="flex-1 overflow-hidden">
+            <p className="text-sm font-bold text-foreground truncate">ยินดีต้อนรับ...</p>
+            <p className="text-[10px] text-muted-foreground font-medium truncate">Clinical Precision</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Navigation */}
+      <nav className="flex-1">
+        {navItems.map((item) => {
+          const isActive = pathname === item.href;
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              onClick={onNavigate}
+              className={`
+                flex items-center gap-3 p-3 rounded-md text-sm
+                transition-all duration-200 group
+                ${isActive
+                  ? "bg-muted-foreground/20 text-secondary-foreground font-bold"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                }
+              `}
+            >
+              <item.icon
+                className={`shrink-0 w-5 h-5 transition-colors stroke-[2] ${isActive ? "text-secondary-foreground" : "text-muted-foreground group-hover:text-foreground"
+                  }`}
+              />
+              {item.label}
+            </Link>
+          );
+        })}
+      </nav>
+
+      {/* Footer Nav */}
+      <div className="space-y-3">
+        {/* Add Member Button */}
+        <Button
+          variant="default"
+          className="w-full py-6 text-lg"
+        >
+          <Plus className="w-5 h-5 stroke-[2]" />
+          <span>เพิ่มสมาชิกในครอบครัว</span>
+        </Button>
+
+        <div>
+          {secondaryNavItems.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className="flex items-center gap-3 p-3 rounded-md text-sm text-muted-foreground hover:text-foreground hover:bg-muted"
+            >
+              <item.icon className="shrink-0 w-5 h-5 transition-colors stroke-[2]" />
+              {item.label}
+            </Link>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── Exported Sidebar Component ──────────────────────────── */
+
+export function SidebarNav() {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <>
+      {/* Desktop Sidebar */}
+      <aside className="hidden lg:flex lg:w-72 lg:flex-col lg:fixed lg:inset-y-0 z-30">
+        <SidebarContent />
+      </aside>
+
+      {/* Mobile Header */}
+      <div className="lg:hidden fixed top-0 inset-x-0 h-16 border-b border-slate-200 bg-white z-30 flex items-center justify-between px-4">
+        <div className="flex items-center gap-3">
+          <Sheet open={open} onOpenChange={setOpen}>
+            <SheetTrigger
+              render={
+                <Button variant="ghost" size="icon" className="shrink-0 text-slate-600" />
+              }
+            >
+              <LayoutGrid className="h-6 w-6" />
+              <span className="sr-only">เปิดเมนู</span>
+            </SheetTrigger>
+            <SheetContent side="left" className="w-72 p-0 border-none shadow-2xl">
+              <SheetTitle className="sr-only">เมนูนำทาง</SheetTitle>
+              <SidebarContent onNavigate={() => setOpen(false)} />
+            </SheetContent>
+          </Sheet>
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-md bg-primary flex items-center justify-center shadow-sm">
+              <HeartPulse className="text-white w-4 h-4" />
+            </div>
+            <span className="font-bold text-lg text-foreground">FamilyCare</span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="icon" className="text-slate-500 rounded-full">
+            <Search className="w-5 h-5" />
+          </Button>
+          <Button variant="ghost" size="icon" className="text-slate-500 rounded-full">
+            <Bell className="w-5 h-5" />
+          </Button>
+        </div>
+      </div>
+    </>
+  );
+}

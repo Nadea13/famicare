@@ -1,0 +1,32 @@
+# ──────────────────────────────────────────────
+# FamiCare Backend Dependencies
+# ──────────────────────────────────────────────
+
+# Web framework
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+python-multipart==0.0.20
+
+# Database (Async PostgreSQL)
+sqlalchemy[asyncio]==2.0.36
+asyncpg==0.30.0
+alembic==1.14.1
+
+# Validation & Settings
+pydantic==2.10.4
+pydantic-settings==2.7.1
+
+# LINE Messaging API
+line-bot-sdk==3.14.0
+
+# Google Gemini AI
+google-genai==1.7.0
+
+# HTTP client (async)
+httpx==0.28.1
+
+# Environment
+python-dotenv==1.0.1
+
+# Utilities
+aiofiles==24.1.0

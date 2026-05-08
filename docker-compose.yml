@@ -1,0 +1,93 @@
+version: "3.9"
+
+services:
+  # ──────────────────────────────────────────────
+  # PostgreSQL Database
+  # ──────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: famicare-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: famicare
+      POSTGRES_PASSWORD: famicare_secret
+      POSTGRES_DB: famicare_db
+    volumes:
+      - famicare_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U famicare -d famicare_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - famicare-network
+
+  # ──────────────────────────────────────────────
+  # pgAdmin (DB Management UI)
+  # ──────────────────────────────────────────────
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: famicare-pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@famicare.local
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - famicare-network
+
+  # ──────────────────────────────────────────────
+  # Backend (FastAPI)
+  # ──────────────────────────────────────────────
+  backend:
+    build: ./backend
+    container_name: famicare-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://famicare:famicare_secret@postgres:5432/famicare_db
+      APP_ENV: development
+      BACKEND_URL: http://localhost:8000
+      FRONTEND_URL: http://localhost:3000
+      UPLOAD_DIR: /app/uploads
+      # Add other secrets as needed via .env or directly here
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./backend/uploads:/app/uploads
+    networks:
+      - famicare-network
+
+  # ──────────────────────────────────────────────
+  # Frontend (Next.js)
+  # ──────────────────────────────────────────────
+  frontend:
+    build: ./frontend
+    container_name: famicare-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+      # For server-side calls within docker network
+      INTERNAL_API_URL: http://backend:8000
+    depends_on:
+      - backend
+    networks:
+      - famicare-network
+
+networks:
+  famicare-network:
+    driver: bridge
+
+volumes:
+  famicare_pgdata:
+    driver: local
