@@ -82,16 +82,10 @@ jobs:
         
       - name: Deploy Backend
         run: railway up --service backend -d
-        working-directory: ./backend
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
           
       - name: Deploy Frontend
         run: railway up --service frontend -d
-        working-directory: ./frontend
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-
-
-
-
