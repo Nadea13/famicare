@@ -69,6 +69,18 @@ const THAI_MONTHS = [
   "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"
 ];
 
+const COMMON_DISEASES = [
+  "เบาหวาน",
+  "ความดันโลหิตสูง",
+  "ไขมันในเลือดสูง",
+  "โรคหัวใจ",
+  "โรคไต",
+  "หอบหืด",
+  "ภูมิแพ้",
+  "ไทรอยด์",
+  "อัมพฤกษ์/อัมพาต"
+];
+
 const DAYS = Array.from({ length: 31 }, (_, i) => (i + 1).toString());
 const CURRENT_YEAR_BE = new Date().getFullYear() + 543;
 const YEARS_BE = Array.from({ length: 120 }, (_, i) => (CURRENT_YEAR_BE - i).toString());
@@ -124,13 +136,13 @@ function PatientCard({
     <div>
       <Card className={`group relative overflow-hidden transition-all duration-300 hover:shadow-lg ${patient.isActive ? 'border-primary ring-1 ring-primary' : 'border-border'}`}>
         {patient.isActive && (
-          <div className="absolute top-0 right-0 bg-primary text-white px-3 py-1 text-[10px] font-black uppercase tracking-wider rounded-bl-lg z-10 flex items-center">
+          <div className="absolute top-0 right-0 bg-primary text-white px-3 py-0.5 md:py-1 text-[10px] font-black uppercase tracking-wider rounded-bl-lg z-10 flex items-center">
             โปรไฟล์หลัก
           </div>
         )}
 
-        <CardContent className="p-6">
-          <div className="flex items-start gap-5">
+        <CardContent className="p-3 md:p-6">
+          <div className="flex items-start gap-3 md:gap-6">
             <div className="w-12 h-12 rounded-full overflow-hidden shrink-0 transition-transform bg-foreground/10 flex items-center justify-center text-foreground font-black">
               {patient.image ? (
                 <img
@@ -177,12 +189,11 @@ function PatientCard({
             </div>
           </div>
 
-          <Separator className="my-6 opacity-50" />
+          <Separator className="my-3 md:my-6 opacity-50" />
 
           <div className="grid grid-cols-2 gap-3">
             <Button
               variant={patient.isActive ? "secondary" : "outline"}
-              className="py-5 font-bold"
               onClick={() => onSelect(patient.id)}
               disabled={patient.isActive}
             >
@@ -190,7 +201,7 @@ function PatientCard({
             </Button>
             <Button
               variant="default"
-              className="py-5 font-bold"
+              className="font-bold"
               onClick={() => onViewDetails(patient)}
             >
               ดูรายละเอียด
@@ -219,7 +230,7 @@ export function PatientsManager() {
     birth_month: "",
     birth_year_be: "",
     birth_year_only: false,
-    underlying_diseases: "",
+    underlying_diseases: [] as string[],
     hospital_name: "",
     hn_number: ""
   });
@@ -307,7 +318,7 @@ export function PatientsManager() {
       birth_month: "",
       birth_year_be: "",
       birth_year_only: false,
-      underlying_diseases: "",
+      underlying_diseases: [],
       hospital_name: "",
       hn_number: ""
     });
@@ -336,7 +347,7 @@ export function PatientsManager() {
       birth_month: month,
       birth_year_be: yearBe,
       birth_year_only: patient.birth_year_only || false,
-      underlying_diseases: patient.underlying_diseases?.join(", ") || "",
+      underlying_diseases: patient.underlying_diseases || [],
       hospital_name: patient.hospital_name || "",
       hn_number: patient.hn_number || ""
     });
@@ -365,7 +376,7 @@ export function PatientsManager() {
         name: formData.name,
         date_of_birth: dob,
         birth_year_only: formData.birth_year_only,
-        underlying_diseases: formData.underlying_diseases.split(',').map(s => s.trim()).filter(s => s !== ""),
+        underlying_diseases: formData.underlying_diseases,
         hospital_name: formData.hospital_name,
         hn_number: formData.hn_number
       };
@@ -398,10 +409,10 @@ export function PatientsManager() {
   }
 
   return (
-    <div className="space-y-8 pb-12">
+    <div className="space-y-3 md:space-y-6">
       {/* Header Section */}
-      <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
-        <div className="space-y-2">
+      <div className="flex flex-row md:items-start justify-between gap-6">
+        <div className="hidden md:block space-y-2">
           <h1 className="text-4xl font-black text-foreground tracking-tight">
             จัดการโปรไฟล์ผู้ป่วย
           </h1>
@@ -410,35 +421,22 @@ export function PatientsManager() {
           </p>
         </div>
 
-        <div className="flex items-center gap-4">
-          <div className={`relative flex items-center transition-all duration-300 ease-in-out ${isSearchExpanded ? 'w-72' : 'w-10'}`}>
-            <Button
-              variant="outline"
-              size="icon"
-              className={`absolute left-0 z-10 w-10 h-10 transition-colors ${isSearchExpanded ? 'border-r-0 rounded-r-none' : ''}`}
-              onClick={() => setIsSearchExpanded(!isSearchExpanded)}
-            >
-              <Search className="w-5 h-5" />
-            </Button>
+        <div className="flex-1 md:flex-none flex items-center gap-3">
+          {/* Search Input - Always visible on mobile, expandable or static on desktop */}
+          <div className="relative flex-1 md:w-72">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <input
               type="text"
               placeholder="ค้นหาชื่อผู้ป่วย..."
-              className={`
-                w-full h-10 border border-border rounded-full pl-10 text-sm font-medium
-                transition-all duration-300 ease-in-out
-                ${isSearchExpanded ? 'opacity-100' : 'opacity-0 pointer-events-none'}
-              `}
+              className="w-full h-10 border border-border rounded-full pl-10 pr-4 text-sm font-medium bg-background focus:ring-2 focus:ring-primary/20 outline-none transition-all"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              onBlur={() => {
-                if (searchQuery === "") setIsSearchExpanded(false);
-              }}
             />
           </div>
 
           <Button 
             onClick={openAddDialog}
-            className="h-10 w-10 bg-background text-secondary-foreground border border-border rounded-full shadow-none hover:bg-muted"
+            className="h-10 w-10 bg-background text-secondary-foreground border border-border rounded-full shadow-none hover:bg-muted shrink-0"
           >
             <Plus className="w-5 h-5" />
           </Button>
@@ -446,7 +444,7 @@ export function PatientsManager() {
       </div>
 
       {/* Patients Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 md:gap-6">
         {filteredPatients.map((patient, index) => (
           <PatientCard
             key={patient.id}
@@ -482,7 +480,7 @@ export function PatientsManager() {
               </DialogDescription>
             </DialogHeader>
             
-            <div className="grid gap-6 py-6">
+            <div className="grid gap-3 md:gap-6 py-3 md:py-6">
               <div className="grid gap-2">
                 <Label htmlFor="name" className="flex items-center gap-2">
                   <User className="w-4 h-4 text-primary" />
@@ -600,14 +598,51 @@ export function PatientsManager() {
               <div className="grid gap-2">
                 <Label htmlFor="diseases" className="flex items-center gap-2">
                   <Stethoscope className="w-4 h-4 text-primary" />
-                  โรคประจำตัว (คั่นด้วยเครื่องหมายคอมม่า ,)
+                  โรคประจำตัว
                 </Label>
-                <Input
-                  id="diseases"
-                  placeholder="เช่น เบาหวาน, ความดันสูง"
-                  value={formData.underlying_diseases}
-                  onChange={e => setFormData({...formData, underlying_diseases: e.target.value})}
-                />
+                <div className="space-y-3">
+                  <Select
+                    onValueChange={(val) => {
+                      if (val && !formData.underlying_diseases.includes(val)) {
+                        setFormData({
+                          ...formData, 
+                          underlying_diseases: [...formData.underlying_diseases, val]
+                        });
+                      }
+                    }}
+                  >
+                    <SelectTrigger className="h-10 text-xs font-bold">
+                      <SelectValue placeholder="เลือกโรคประจำตัว..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {COMMON_DISEASES.map(d => (
+                        <SelectItem key={d} value={d} className="text-xs font-bold">{d}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  <div className="flex flex-wrap gap-2 p-3 min-h-[50px] bg-muted/30 rounded-lg border border-dashed border-muted-foreground/20">
+                    {formData.underlying_diseases.length > 0 ? (
+                      formData.underlying_diseases.map(d => (
+                        <Badge key={d} variant="secondary" className="pl-3 pr-1 py-1 flex items-center gap-1 font-bold group animate-in fade-in zoom-in duration-200">
+                          {d}
+                          <button
+                            type="button"
+                            onClick={() => setFormData({
+                              ...formData,
+                              underlying_diseases: formData.underlying_diseases.filter(item => item !== d)
+                            })}
+                            className="w-5 h-5 rounded-full flex items-center justify-center hover:bg-destructive hover:text-white transition-colors"
+                          >
+                            <Plus className="w-3 h-3 rotate-45" />
+                          </button>
+                        </Badge>
+                      ))
+                    ) : (
+                      <p className="text-[10px] text-muted-foreground font-bold italic py-1">ยังไม่มีการระบุโรคประจำตัว</p>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -630,11 +665,11 @@ export function PatientsManager() {
 
       {/* Patient Details Dialog */}
       <Dialog open={!!selectedPatientForView} onOpenChange={(open) => !open && setSelectedPatientForView(null)}>
-        <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden border-none shadow-2xl">
+        <DialogContent className="sm:max-w-[600px] p-0 md:p-0 overflow-hidden border-none shadow-2xl">
           {selectedPatientForView && (
             <div className="flex flex-col">
               {/* Header with Background */}
-              <div className="bg-primary p-8 text-white relative">
+              <div className="bg-primary p-3 md:p-6 text-white relative">
                 <div className="flex items-center gap-6 relative z-10">
                   <div className="w-24 h-24 rounded-full bg-white/20 border-4 border-white/30 flex items-center justify-center text-3xl font-black">
                     {selectedPatientForView.name.slice(0, 2)}
@@ -691,16 +726,16 @@ export function PatientsManager() {
               </div>
 
               {/* Detailed Info */}
-              <div className="p-8 space-y-8 bg-background">
-                <div className="grid grid-cols-2 gap-8">
-                  <div className="space-y-4">
+              <div className="p-3 md:p-6 space-y-3 md:space-y-6 bg-background">
+                <div className="grid grid-cols-2 gap-3 md:gap-6">
+                  <div className="space-y-3">
                     <div className="flex items-center gap-2 text-muted-foreground">
                       <Fingerprint className="w-4 h-4" />
                       <span className="text-xs font-black uppercase tracking-wider">เลขประจำตัวผู้ป่วย (HN)</span>
                     </div>
                     <p className="text-lg font-black text-foreground">{selectedPatientForView.hn_number || "ไม่ระบุ"}</p>
                   </div>
-                  <div className="space-y-4">
+                  <div className="space-y-3">
                     <div className="flex items-center gap-2 text-muted-foreground">
                       <Building2 className="w-4 h-4" />
                       <span className="text-xs font-black uppercase tracking-wider">สถานพยาบาลที่ดูแล</span>
@@ -711,7 +746,7 @@ export function PatientsManager() {
 
                 <Separator />
 
-                <div className="space-y-4">
+                <div className="space-y-3">
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <Stethoscope className="w-4 h-4" />
                     <span className="text-xs font-black uppercase tracking-wider">โรคประจำตัวและภาวะสุขภาพ</span>
@@ -729,7 +764,7 @@ export function PatientsManager() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4 pt-4">
+                <div className="grid grid-cols-2 gap-3 md:gap-6">
                   <Card className="border-none bg-muted/30 p-4 flex items-center gap-4">
                     <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
                       <Activity className="w-5 h-5" />
@@ -753,7 +788,7 @@ export function PatientsManager() {
                 <Separator />
 
                 {/* Family Members Section */}
-                <div className="space-y-5">
+                <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 text-muted-foreground">
                       <Users className="w-4 h-4" />
@@ -838,7 +873,7 @@ export function PatientsManager() {
               </div>
 
               {/* Action Footer */}
-              <div className="p-6 bg-muted/20 border-t flex justify-end gap-3">
+              <div className="p-3 md:p-6 bg-muted/20 border-t flex justify-end gap-3">
                 <Button variant="outline" className="font-bold" onClick={() => setSelectedPatientForView(null)}>
                   ปิดหน้าต่าง
                 </Button>

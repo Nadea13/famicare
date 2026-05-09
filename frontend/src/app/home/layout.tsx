@@ -16,9 +16,9 @@ export default function DashboardLayout({
       <SidebarNav />
 
       {/* Main content area — offset for sidebar on desktop */}
-      <main className="lg:pl-72 min-h-screen">
+      <main className="lg:pl-72 min-h-screen pb-16 lg:pb-0">
         {/* Page content wrapper */}
-        <div className="pt-20 lg:pt-0">
+        <div className="pt-16 lg:pt-0">
           <div className="p-3 md:p-6">{children}</div>
         </div>
       </main>
