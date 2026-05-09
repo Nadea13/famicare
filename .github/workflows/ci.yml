@@ -57,18 +57,13 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
         
-      - name: Lint check
+      - name: Lint check (Optional but recommended)
         run: |
           pip install flake8
+          # Stop the build if there are Python syntax errors or undefined names
           flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
 
-      - name: Security audit
-        run: |
-          pip install safety
-          safety check || true # Warn but don't fail for now
-
       - name: Run Backend Tests
-
         run: |
           export PYTHONPATH=$PYTHONPATH:.
           pytest
@@ -86,15 +81,16 @@ jobs:
         run: npm install -g @railway/cli
         
       - name: Deploy Backend
-        run: railway up --service famicare-backend -d
+        run: railway up --service famicare -d
         working-directory: ./backend
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
           
       - name: Deploy Frontend
-        run: railway up --service famicare-frontend -d
+        run: railway up --service divine-eagerness -d
         working-directory: ./frontend
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+
 
 
