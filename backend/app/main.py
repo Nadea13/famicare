@@ -62,6 +62,18 @@ async def lifespan(app: FastAPI):
     logger.info("👋 FamiCare API shut down.")
 
 
+# ── App Instance ─────────────────────────────────────────────
+from app.limiter import limiter
+app = FastAPI(
+    title="FamiCare API",
+    description="HealthTech SaaS for tracking elderly health data via LINE bot & Web Dashboard",
+    version="0.1.0",
+    lifespan=lifespan,
+)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+
 @app.middleware("http")
 async def add_security_headers(request, call_next):
     response = await call_next(request)
@@ -73,18 +85,6 @@ async def add_security_headers(request, call_next):
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     return response
 
-
-
-# ── App Instance ─────────────────────────────────────────────
-from app.limiter import limiter
-app = FastAPI(
-    title="FamiCare API",
-    description="HealthTech SaaS for tracking elderly health data via LINE bot & Web Dashboard",
-    version="0.1.0",
-    lifespan=lifespan,
-)
-app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 
 
