@@ -8,8 +8,12 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 
 from app.dependencies import get_settings
+
 from app.database_config import engine
 from app.models.base_model import Base
 from app.routers import line_webhook_router, health_log_router, auth_router
@@ -58,13 +62,31 @@ async def lifespan(app: FastAPI):
     logger.info("👋 FamiCare API shut down.")
 
 
+@app.middleware("http")
+async def add_security_headers(request, call_next):
+    response = await call_next(request)
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    # HSTS only if in production
+    if settings.APP_ENV == "production":
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    return response
+
+
+
 # ── App Instance ─────────────────────────────────────────────
+from app.limiter import limiter
 app = FastAPI(
     title="FamiCare API",
     description="HealthTech SaaS for tracking elderly health data via LINE bot & Web Dashboard",
     version="0.1.0",
     lifespan=lifespan,
 )
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+
 
 # ── CORS ─────────────────────────────────────────────────────
 app.add_middleware(

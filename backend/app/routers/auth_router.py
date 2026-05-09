@@ -18,6 +18,8 @@ from app.dependencies import get_settings, get_current_user
 from app.database_config import get_db
 from app.services.auth_service import create_access_token
 from app.services.user_service import get_or_create_line_user
+from app.limiter import limiter
+from fastapi import Request
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -29,7 +31,9 @@ LINE_PROFILE_URL = "https://api.line.me/v2/profile"
 
 
 @router.get("/login")
-async def line_login(invite: str | None = None):
+@limiter.limit("5/minute")
+async def line_login(request: Request, invite: str | None = None):
+
     """Redirect user to LINE Login authorization page."""
     state = "famicare_login"
     if invite:
