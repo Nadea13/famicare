@@ -81,16 +81,17 @@ jobs:
         run: npm install -g @railway/cli
         
       - name: Deploy Backend
-        run: railway up --service famicare -d
+        run: railway up --service backend -d
         working-directory: ./backend
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
           
       - name: Deploy Frontend
-        run: railway up --service divine-eagerness -d
+        run: railway up --service frontend -d
         working-directory: ./frontend
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+
 
 
 
