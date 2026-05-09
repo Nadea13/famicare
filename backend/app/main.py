@@ -14,13 +14,29 @@ from app.database_config import engine
 from app.models.base_model import Base
 from app.routers import line_webhook_router, health_log_router, auth_router
 
+# ── Monitoring (Sentry) ──────────────────────────────────────
+import sentry_sdk
+from sentry_sdk.integrations.fastapi import FastApiIntegration
+
+settings = get_settings()
+
+if settings.SENTRY_DSN:
+    sentry_sdk.init(
+        dsn=settings.SENTRY_DSN,
+        integrations=[FastApiIntegration()],
+        traces_sample_rate=1.0,
+        environment=settings.APP_ENV,
+    )
+    logging.info("🎯 Sentry monitoring initialized")
+
+
 # ── Logging ──────────────────────────────────────────────────
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
 )
 logger = logging.getLogger(__name__)
-settings = get_settings()
+
 
 
 # ── Lifespan (startup / shutdown) ────────────────────────────

@@ -29,7 +29,15 @@ jobs:
       - name: Build frontend (Check for errors)
         run: npm run build
         env:
-          NEXT_PUBLIC_API_URL: http://localhost:8000 # Placeholder for build check
+          NEXT_PUBLIC_API_URL: http://localhost:8000
+          
+      - name: Security audit
+        run: npm audit --audit-level=high || true # Warn but don't fail for now
+        
+      - name: Run Frontend Tests
+
+        run: npm test -- --run # Run tests in CI mode (no watch)
+
 
   # ── Backend CI ──────────────────────────────────────────────
   backend-check:
@@ -49,8 +57,44 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
         
-      - name: Lint check (Optional but recommended)
+      - name: Lint check
         run: |
           pip install flake8
-          # Stop the build if there are Python syntax errors or undefined names
           flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+
+      - name: Security audit
+        run: |
+          pip install safety
+          safety check || true # Warn but don't fail for now
+
+      - name: Run Backend Tests
+
+        run: |
+          export PYTHONPATH=$PYTHONPATH:.
+          pytest
+
+  # ── Continuous Deployment ───────────────────────────────────
+  deploy:
+    name: Deploy to Railway
+    needs: [frontend-check, backend-check]
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+        
+      - name: Deploy Backend
+        run: railway up --service famicare-backend -d
+        working-directory: ./backend
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          
+      - name: Deploy Frontend
+        run: railway up --service famicare-frontend -d
+        working-directory: ./frontend
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+
+
