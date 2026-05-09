@@ -26,7 +26,7 @@ async def list_family_members(
     if patient_id:
         # Filter by specific patient
         stmt = (
-            select(User, FamilyMember.role)
+            select(User, FamilyMember.role, FamilyMember.relationship_label)
             .join(FamilyMember, FamilyMember.user_id == User.id)
             .where(FamilyMember.patient_id == patient_id, User.deleted_at == None)
         )
@@ -50,16 +50,16 @@ async def list_family_members(
     
     result = await db.execute(stmt)
     if patient_id:
-        # Return user objects with an added role field
+        # Return user objects with an added role and relationship field
         rows = result.all()
         members = []
-        for user, role in rows:
-            # We can dynamically add the role to the user object or return a dict
+        for user, role, rel in rows:
             members.append({
                 "id": user.id,
                 "display_name": user.display_name,
                 "picture_url": user.picture_url,
-                "role": role
+                "role": role,
+                "relationship": rel
             })
         return members
     else:

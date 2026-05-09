@@ -52,7 +52,8 @@ async def create_patient(
     new_link = FamilyMember(
         user_id=user_id,
         patient_id=new_patient.id,
-        relationship_label="Creator"
+        relationship_label="Creator",
+        role="admin"
     )
     db.add(new_link)
 
@@ -76,17 +77,41 @@ async def list_patients(
     """
     List all patients associated with the logged-in user.
     """
+    from app.models.user_model import User
     user_id = uuid.UUID(current_user.get("sub"))
     
-    # Query patients linked to this user via FamilyMember table
+    # Subquery to find the creator of each patient
+    creator_subquery = (
+        select(FamilyMember.patient_id, User.display_name.label("creator_name"))
+        .join(User, FamilyMember.user_id == User.id)
+        .where(FamilyMember.relationship_label == "Creator")
+        .subquery()
+    )
+
+    # Query patients and join with their creator info
     stmt = (
-        select(Patient)
+        select(Patient, creator_subquery.c.creator_name)
         .join(FamilyMember, FamilyMember.patient_id == Patient.id)
+        .outerjoin(creator_subquery, Patient.id == creator_subquery.c.patient_id)
         .where(FamilyMember.user_id == user_id, Patient.deleted_at == None)
     )
     
     result = await db.execute(stmt)
-    patients = result.scalars().all()
+    rows = result.all()
+    
+    patients = []
+    for patient, creator_name in rows:
+        p_dict = {
+            "id": patient.id,
+            "name": patient.name,
+            "date_of_birth": patient.date_of_birth.isoformat() if patient.date_of_birth else None,
+            "birth_year_only": patient.birth_year_only,
+            "underlying_diseases": patient.underlying_diseases,
+            "hospital_name": patient.hospital_name,
+            "hn_number": patient.hn_number,
+            "creator_name": creator_name
+        }
+        patients.append(p_dict)
     
     return patients
 

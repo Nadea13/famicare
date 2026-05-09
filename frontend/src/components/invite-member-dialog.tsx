@@ -32,35 +32,13 @@ export function InviteMemberDialog({ isOpen, onClose, patientId }: InviteMemberD
   const [copied, setCopied] = useState(false);
   const [inviteLink, setInviteLink] = useState("");
   const [loading, setLoading] = useState(false);
-  const [patients, setPatients] = useState<any[]>([]);
-  const [selectedPatientId, setSelectedPatientId] = useState<string>("");
-
-  useEffect(() => {
-    if (isOpen) {
-      const loadPatients = async () => {
-        try {
-          const data = await api.getPatients();
-          setPatients(data);
-          // If a patientId prop was passed, use it, otherwise default to the first patient
-          if (patientId) {
-            setSelectedPatientId(patientId);
-          } else if (data.length > 0) {
-            setSelectedPatientId(data[0].id);
-          }
-        } catch (error) {
-          console.error("Failed to load patients for invitation:", error);
-        }
-      };
-      loadPatients();
-    }
-  }, [isOpen, patientId]);
 
   const generateInvite = async () => {
-    if (!selectedPatientId) return;
+    if (!patientId) return;
     setLoading(true);
     try {
       const res = await api.createInvite({
-        patient_id: selectedPatientId,
+        patient_id: patientId,
         role: role
       });
       setInviteLink(res.line_link);
@@ -89,7 +67,7 @@ export function InviteMemberDialog({ isOpen, onClose, patientId }: InviteMemberD
   // Reset link when role or patient changes
   useEffect(() => {
     setInviteLink("");
-  }, [role, selectedPatientId]);
+  }, [role, patientId]);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -102,30 +80,6 @@ export function InviteMemberDialog({ isOpen, onClose, patientId }: InviteMemberD
         </DialogHeader>
 
         <div className="grid gap-6 py-6">
-          {/* Patient Selection Section */}
-          <div className="grid gap-2">
-            <Label className="flex items-center gap-2">
-              <Heart className="w-4 h-4 text-primary" />
-              เลือกผู้ป่วยที่ต้องการเชิญสมาชิกเข้าดู
-            </Label>
-            <Select value={selectedPatientId} onValueChange={setSelectedPatientId}>
-              <SelectTrigger className="h-10 text-xs font-bold">
-                <SelectValue placeholder="เลือกโปรไฟล์ผู้ป่วย" />
-              </SelectTrigger>
-              <SelectContent>
-                {patients.map((p) => (
-                  <SelectItem key={p.id} value={p.id} className="text-xs font-bold">
-                    {p.name}
-                  </SelectItem>
-                ))}
-                {patients.length === 0 && (
-                  <SelectItem value="none" disabled className="text-xs font-bold">
-                    ไม่มีข้อมูลผู้ป่วย
-                  </SelectItem>
-                )}
-              </SelectContent>
-            </Select>
-          </div>
           {/* Access Rights Section */}
           <div className="grid gap-2">
             <Label className="flex items-center gap-2">
@@ -166,7 +120,7 @@ export function InviteMemberDialog({ isOpen, onClose, patientId }: InviteMemberD
               <Button
                 size="sm"
                 onClick={handleCopyLink}
-                disabled={loading || !selectedPatientId}
+                disabled={loading || !patientId}
                 className={`h-8 px-3 text-xs font-black transition-all duration-300 ${
                   copied ? "bg-green-500 hover:bg-green-600" : "bg-primary hover:bg-primary/90"
                 }`}
@@ -184,7 +138,7 @@ export function InviteMemberDialog({ isOpen, onClose, patientId }: InviteMemberD
                 )}
               </Button>
             </div>
-            {!selectedPatientId && (
+            {!patientId && (
               <p className="text-[10px] text-destructive font-bold">
                 * กรุณาเลือกโปรไฟล์ผู้ป่วยก่อนสร้างลิงก์เชิญ
               </p>

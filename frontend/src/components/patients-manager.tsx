@@ -17,8 +17,10 @@ import {
   ChevronDown,
   Users,
   Shield,
-  Loader2
+  Loader2,
+  UserPlus
 } from "lucide-react";
+import { InviteMemberDialog } from "./invite-member-dialog";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -57,6 +59,7 @@ interface Patient {
   isActive: boolean;
   hospital_name?: string;
   hn_number?: string;
+  creator_name?: string;
 }
 
 /* --- Constants --------------------------------------------- */
@@ -148,6 +151,16 @@ function PatientCard({
                 <p className="text-xs font-bold text-muted-foreground mt-0.5 truncate">
                   {patient.hospital_name || "ไม่ระบุโรงพยาบาล"}
                 </p>
+                {patient.creator_name && (
+                  <div className="flex items-center gap-1.5 mt-1.5">
+                    <div className="w-4 h-4 rounded-full bg-primary/10 flex items-center justify-center">
+                      <User className="w-2.5 h-2.5 text-primary" />
+                    </div>
+                    <span className="text-[10px] font-bold text-muted-foreground">
+                      ผู้สร้าง: {patient.creator_name}
+                    </span>
+                  </div>
+                )}
               </div>
 
               <div className="flex flex-wrap gap-1.5">
@@ -213,6 +226,7 @@ export function PatientsManager() {
 
   const [selectedPatientMembers, setSelectedPatientMembers] = useState<any[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(false);
+  const [isInviteOpen, setIsInviteOpen] = useState(false);
 
   useEffect(() => {
     async function loadMembers() {
@@ -223,7 +237,13 @@ export function PatientsManager() {
       setLoadingMembers(true);
       try {
         const membersData = await api.getMembers(selectedPatientForView.id);
-        setSelectedPatientMembers(membersData);
+        // Sort so "Creator" is first
+        const sorted = [...membersData].sort((a, b) => {
+          if (a.relationship === "Creator") return -1;
+          if (b.relationship === "Creator") return 1;
+          return 0;
+        });
+        setSelectedPatientMembers(sorted);
       } catch (error) {
         console.error("Failed to fetch patient members:", error);
       } finally {
@@ -750,27 +770,64 @@ export function PatientsManager() {
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {selectedPatientMembers.map((m) => (
-                        <div key={m.id} className="flex items-center gap-3 p-3 rounded-lg border bg-card/50 hover:bg-card transition-colors">
-                          <div className="w-10 h-10 rounded-full overflow-hidden bg-muted shrink-0 border border-border">
-                            {m.picture_url ? (
-                              <img src={m.picture_url} alt={m.display_name} className="w-full h-full object-cover" />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center font-black text-xs">
-                                {m.display_name?.slice(0, 2)}
+                      {selectedPatientMembers.map((m) => {
+                        const isCreator = m.relationship === "Creator";
+                        return (
+                          <div 
+                            key={m.id} 
+                            className={`flex items-center gap-3 p-3 rounded-xl border transition-all relative overflow-hidden group ${
+                              isCreator 
+                                ? "bg-primary/10 border-primary/20 ring-1 ring-primary/10 shadow-sm" 
+                                : "bg-card/50 border-border hover:bg-card"
+                            }`}
+                          >
+                            {isCreator && (
+                              <div className="absolute top-0 right-0 bg-primary text-white text-[9px] font-black px-2 py-0.5 rounded-bl-lg shadow-sm flex items-center gap-1">
+                                <Shield className="w-2.5 h-2.5" />
+                                ผู้สร้างโปรไฟล์
                               </div>
                             )}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-black truncate">{m.display_name}</p>
-                            <div className="flex items-center gap-1 mt-0.5">
-                              <Shield className={`w-3 h-3 ${m.role === 'admin' ? 'text-primary' : 'text-slate-400'}`} />
-                              <span className="text-[10px] font-bold text-muted-foreground capitalize">{m.role}</span>
+                            <div className={`w-10 h-10 rounded-full overflow-hidden shrink-0 border-2 ${
+                              isCreator ? "border-primary shadow-sm" : "border-border bg-muted"
+                            }`}>
+                              {m.picture_url ? (
+                                <img src={m.picture_url} alt={m.display_name} className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center font-black text-xs">
+                                  {m.display_name?.slice(0, 2)}
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className={`text-sm font-black truncate ${isCreator ? "text-primary" : "text-foreground"}`}>
+                                {m.display_name}
+                              </p>
+                              <div className="flex items-center gap-1 mt-0.5">
+                                <Shield className={`w-3 h-3 ${m.role === 'ผู้สร้าง' || m.role === 'admin' ? 'text-primary' : 'text-slate-400'}`} />
+                                <span className="text-[10px] font-bold text-muted-foreground capitalize">
+                                  {m.role === 'ผู้สร้าง' ? 'ผู้สร้าง' : (m.role === 'admin' ? 'ผู้ดูแล (Admin)' : 'ผู้เข้าชม (Viewer)')}
+                                </span>
+                              </div>
                             </div>
                           </div>
+                        );
+                      })}
+
+                      {/* Add Member Card */}
+                      <button 
+                        onClick={() => setIsInviteOpen(true)}
+                        className="flex items-center gap-3 p-3 rounded-lg border border-dashed border-primary/30 bg-primary/5 hover:bg-primary/10 transition-all group text-left"
+                      >
+                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
+                          <Plus className="w-5 h-5" />
                         </div>
-                      ))}
-                      {selectedPatientMembers.length === 0 && (
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-black text-primary">เชิญสมาชิกเพิ่ม</p>
+                          <p className="text-[10px] font-bold text-primary/60">เพิ่มคนในครอบครัว</p>
+                        </div>
+                      </button>
+
+                      {selectedPatientMembers.length === 0 && !loadingMembers && (
                         <p className="col-span-full text-center py-4 text-sm font-bold text-muted-foreground italic">
                           ยังไม่มีสมาชิกคนอื่นเข้าร่วมดูแล
                         </p>
@@ -801,6 +858,13 @@ export function PatientsManager() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Invite Dialog Triggered from Patient Card */}
+      <InviteMemberDialog 
+        isOpen={isInviteOpen}
+        onClose={() => setIsInviteOpen(false)}
+        patientId={selectedPatientForView?.id}
+      />
     </div>
   );
 }

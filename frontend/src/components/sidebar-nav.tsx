@@ -28,7 +28,6 @@ import {
   HelpCircle,
   Home
 } from "lucide-react";
-import { InviteMemberDialog } from "./invite-member-dialog";
 import { api } from "@/lib/api";
 
 /* --- Navigation Items --- */
@@ -36,7 +35,6 @@ import { api } from "@/lib/api";
 const navItems = [
   { href: "/home", label: "หน้าหลัก", icon: HeartPulse },
   { href: "/home/patients", label: "ผู้ป่วย", icon: UserPlus },
-  { href: "/home/members", label: "สมาชิก", icon: Users },
   { href: "/home/medical-record", label: "ประวัติสุขภาพ", icon: FileText },
   { href: "/home/medications", label: "รายการยา", icon: BriefcaseMedical },
   { href: "/home/appointments", label: "การนัดหมาย", icon: Calendar },
@@ -51,8 +49,7 @@ const secondaryNavItems = [
 
 function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
-  const [user, setUser] = useState<{ display_name: string; picture_url: string; role: string } | null>(null);
-  const [isInviteOpen, setIsInviteOpen] = useState(false);
+  const [user, setUser] = useState<{ display_name: string; picture_url: string; role: string; primary_patient_id?: string | null } | null>(null);
 
   useEffect(() => {
     async function loadProfile() {
@@ -141,22 +138,6 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
 
       {/* Footer Nav */}
       <div className="space-y-3">
-        {/* Add Member Button */}
-        <Button
-          variant="default"
-          className="w-full py-6 text-lg shadow-lg hover:shadow-xl transition-all duration-300 bg-primary hover:bg-primary/90"
-          onClick={() => setIsInviteOpen(true)}
-        >
-          <UserPlus className="w-5 h-5 stroke-[2] mr-2" />
-          <span>เชิญสมาชิกเพิ่ม</span>
-        </Button>
-
-        <InviteMemberDialog
-          isOpen={isInviteOpen}
-          onClose={() => setIsInviteOpen(false)}
-          patientId={user?.primary_patient_id}
-        />
-
         <div>
           {secondaryNavItems.map((item) => (
             <Link
