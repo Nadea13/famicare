@@ -29,14 +29,19 @@ LINE_PROFILE_URL = "https://api.line.me/v2/profile"
 
 
 @router.get("/login")
-async def line_login():
+async def line_login(invite: str | None = None):
     """Redirect user to LINE Login authorization page."""
+    state = "famicare_login"
+    if invite:
+        state = f"invite_{invite}"
+        
     params = {
         "response_type": "code",
         "client_id": settings.LINE_LOGIN_CHANNEL_ID,
         "redirect_uri": settings.LINE_LOGIN_REDIRECT_URI,
-        "state": "famicare_login",
+        "state": state,
         "scope": "profile openid",
+        "bot_prompt": "aggressive", # Force add bot
     }
     # Manually build query string to ensure %20 for spaces in scope
     query = urlencode(params).replace("+", "%20")
@@ -48,6 +53,7 @@ async def line_login():
 @router.get("/callback")
 async def line_callback(
     code: str | None = None, 
+    state: str | None = None,
     error: str | None = None,
     db: AsyncSession = Depends(get_db)
 ):
@@ -101,15 +107,48 @@ async def line_callback(
         picture_url=picture_url
     )
 
-    # 4. Generate our system's JWT token
+    # 4. Handle Invitation if present in state
+    if state and state.startswith("invite_"):
+        invite_token = state.replace("invite_", "")
+        from app.services.invitation_service import verify_invitation_token
+        from app.models.family_member_model import FamilyMember
+        import uuid
+        
+        payload = verify_invitation_token(invite_token)
+        if payload:
+            patient_id = uuid.UUID(payload.get("patient_id"))
+            role = payload.get("role", "viewer")
+            
+            # Check if already a member
+            existing_stmt = select(FamilyMember).where(
+                FamilyMember.user_id == user.id,
+                FamilyMember.patient_id == patient_id
+            )
+            existing_result = await db.execute(existing_stmt)
+            if not existing_result.scalars().first():
+                new_member = FamilyMember(
+                    user_id=user.id,
+                    patient_id=patient_id,
+                    role=role,
+                    relationship_label="สมาชิกครอบครัว"
+                )
+                db.add(new_member)
+                
+                # Set as primary patient if none
+                if not user.primary_patient_id:
+                    user.primary_patient_id = str(patient_id)
+                
+                await db.commit()
+                logger.info(f"User {display_name} joined family for patient {patient_id} via invitation.")
+
+    # 5. Generate our system's JWT token
     system_token = create_access_token(data={
         "sub": str(user.id),
         "line_id": line_user_id,
         "name": display_name
     })
 
-    # 5. Redirect back to frontend with token
-    # In production, you might want to use a Secure HttpOnly cookie instead of URL param
+    # 6. Redirect back to frontend with token
     redirect_url = f"{settings.FRONTEND_URL}/login/success?token={system_token}"
     logger.info(f"User {display_name} authenticated successfully. Redirecting...")
     

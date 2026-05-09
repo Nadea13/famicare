@@ -26,6 +26,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { api } from "@/lib/api";
+import { InviteMemberDialog } from "./invite-member-dialog";
 
 /* --- Types --- */
 
@@ -148,6 +149,7 @@ export function MembersManager() {
   const [loading, setLoading] = useState(true);
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [isInviteOpen, setIsInviteOpen] = useState(false);
 
   useEffect(() => {
     async function loadData() {
@@ -250,11 +252,22 @@ export function MembersManager() {
               }}
             />
           </div>
-          <Button variant="outline" size="icon" className="w-10 h-10 shrink-0">
-            <UserPlus />
+          <Button 
+            variant="outline" 
+            size="icon" 
+            className="w-10 h-10 shrink-0 hover:bg-primary/5 hover:text-primary transition-colors"
+            onClick={() => setIsInviteOpen(true)}
+          >
+            <UserPlus className="w-5 h-5" />
           </Button>
         </div>
       </div>
+
+      <InviteMemberDialog
+        isOpen={isInviteOpen}
+        onClose={() => setIsInviteOpen(false)}
+        patientId={currentUser?.primary_patient_id}
+      />
 
       {/* Members Grid */}
       <div className="space-y-4">
@@ -271,7 +284,7 @@ export function MembersManager() {
           {/* Add Slot */}
           <div className="animate-fade-in-up" style={{ animationDelay: `${200 + members.length * 100}ms` }}>
             <button
-              onClick={handleInviteLine}
+              onClick={() => setIsInviteOpen(true)}
               className="w-full h-full min-h-[160px] rounded-xl border-2 border-dashed border-muted-foreground/20 hover:border-primary/40 hover:bg-primary/5 transition-all flex flex-col items-center justify-center gap-3 group"
             >
               <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary transition-all">

@@ -96,13 +96,34 @@ async def handle_webhook(
                 picture_url=profile.get("pictureUrl")
             )
             
-            await send_line_reply(
-                reply_token,
-                f"🏥 สวัสดีค่ะคุณ {profile.get('displayName', '')}! ยินดีต้อนรับสู่ FamiCare\n\n"
-                "ส่งรูปถ่ายสมุดสุขภาพ (สมุด NCD) หรือซองยา "
-                "มาให้เราได้เลยนะคะ\n\n"
-                "เริ่มต้นโดยถ่ายรูปส่งมาเลยค่ะ! 📸",
-            )
+            # Check for invitation token in start_payload
+            start_payload = event.get("postback", {}).get("data") # Sometimes in postback or follow params
+            # Note: For R/ti/p link with ?start=token, it comes in event.detail.params.start_payload in some SDKs
+            # In line-bot-sdk-python v3, follow event might have it in source or params
+            params = event.get("mode") # Placeholder for checking payload
+            start_payload = event.get("follow", {}).get("start_payload") # Specific to some versions
+            
+            # More reliable way for v3:
+            start_payload = None
+            if "follow" in event and "start_payload" in event["follow"]:
+                start_payload = event["follow"]["start_payload"]
+
+            if start_payload:
+                await send_line_reply(
+                    reply_token,
+                    f"🏥 ยินดีต้อนรับคุณ {profile.get('displayName', '')} เข้าสู่ FamiCare ค่ะ!\n\n"
+                    "คุณได้รับคำเชิญให้เข้าร่วมดูแลสมาชิกในครอบครัว\n"
+                    "กรุณากดปุ่มด้านล่างเพื่อยืนยันการเข้าร่วมนะ คะ:\n\n"
+                    f"🔗 {settings.FRONTEND_URL}/join?token={start_payload}"
+                )
+            else:
+                await send_line_reply(
+                    reply_token,
+                    f"🏥 สวัสดีค่ะคุณ {profile.get('displayName', '')}! ยินดีต้อนรับสู่ FamiCare\n\n"
+                    "ส่งรูปถ่ายสมุดสุขภาพ (สมุด NCD) หรือซองยา "
+                    "มาให้เราได้เลยนะคะ\n\n"
+                    "เริ่มต้นโดยถ่ายรูปส่งมาเลยค่ะ! 📸",
+                )
 
     return {"status": "ok"}
 

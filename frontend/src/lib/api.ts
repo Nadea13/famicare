@@ -54,7 +54,7 @@ export const api = {
     method: 'PUT',
     body: JSON.stringify(data)
   }),
-  getMembers: () => fetchWithAuth('/members'),
+  getMembers: (patientId?: string) => fetchWithAuth(`/members${patientId ? `?patient_id=${patientId}` : ""}`),
   setPrimaryPatient: (patientId: string) => fetchWithAuth('/auth/profile/primary', {
     method: 'PUT',
     body: JSON.stringify({ patient_id: patientId })
@@ -64,5 +64,13 @@ export const api = {
   }),
   deleteProfile: () => fetchWithAuth('/auth/profile', {
     method: 'DELETE'
+  }),
+  createInvite: (data: { patient_id: string; role: string }) => fetchWithAuth('/members/invite', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  }),
+  joinFamily: (token: string) => fetchWithAuth('/members/join', {
+    method: 'POST',
+    body: JSON.stringify({ token })
   }),
 };

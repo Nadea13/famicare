@@ -14,7 +14,10 @@ import {
   Pencil,
   Trash2,
   Check,
-  ChevronDown
+  ChevronDown,
+  Users,
+  Shield,
+  Loader2
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -207,6 +210,28 @@ export function PatientsManager() {
     hospital_name: "",
     hn_number: ""
   });
+
+  const [selectedPatientMembers, setSelectedPatientMembers] = useState<any[]>([]);
+  const [loadingMembers, setLoadingMembers] = useState(false);
+
+  useEffect(() => {
+    async function loadMembers() {
+      if (!selectedPatientForView) {
+        setSelectedPatientMembers([]);
+        return;
+      }
+      setLoadingMembers(true);
+      try {
+        const membersData = await api.getMembers(selectedPatientForView.id);
+        setSelectedPatientMembers(membersData);
+      } catch (error) {
+        console.error("Failed to fetch patient members:", error);
+      } finally {
+        setLoadingMembers(false);
+      }
+    }
+    loadMembers();
+  }, [selectedPatientForView]);
 
   const loadPatients = async () => {
     try {
@@ -703,6 +728,55 @@ export function PatientsManager() {
                       <p className="text-sm font-black">ดูประวัติย้อนหลัง</p>
                     </div>
                   </Card>
+                </div>
+
+                <Separator />
+
+                {/* Family Members Section */}
+                <div className="space-y-5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Users className="w-4 h-4" />
+                      <span className="text-xs font-black uppercase tracking-wider">สมาชิกครอบครัวที่ร่วมดูแล</span>
+                    </div>
+                    <Badge variant="outline" className="font-black text-[10px]">
+                      {selectedPatientMembers.length} คน
+                    </Badge>
+                  </div>
+
+                  {loadingMembers ? (
+                    <div className="flex items-center justify-center py-4">
+                      <Loader2 className="w-6 h-6 text-primary animate-spin" />
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {selectedPatientMembers.map((m) => (
+                        <div key={m.id} className="flex items-center gap-3 p-3 rounded-lg border bg-card/50 hover:bg-card transition-colors">
+                          <div className="w-10 h-10 rounded-full overflow-hidden bg-muted shrink-0 border border-border">
+                            {m.picture_url ? (
+                              <img src={m.picture_url} alt={m.display_name} className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center font-black text-xs">
+                                {m.display_name?.slice(0, 2)}
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-black truncate">{m.display_name}</p>
+                            <div className="flex items-center gap-1 mt-0.5">
+                              <Shield className={`w-3 h-3 ${m.role === 'admin' ? 'text-primary' : 'text-slate-400'}`} />
+                              <span className="text-[10px] font-bold text-muted-foreground capitalize">{m.role}</span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                      {selectedPatientMembers.length === 0 && (
+                        <p className="col-span-full text-center py-4 text-sm font-bold text-muted-foreground italic">
+                          ยังไม่มีสมาชิกคนอื่นเข้าร่วมดูแล
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
 

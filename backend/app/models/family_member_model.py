@@ -40,6 +40,9 @@ class FamilyMember(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     relationship_label: Mapped[str | None] = mapped_column(
         String(100), nullable=True, doc="e.g. ลูก, หลาน, คู่สมรส"
     )
+    role: Mapped[str] = mapped_column(
+        String(20), default="viewer", nullable=False, doc="admin or viewer"
+    )
 
     # ── Relationships ────────────────────────────────────────
     user = relationship("User", back_populates="family_members")

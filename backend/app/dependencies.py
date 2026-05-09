@@ -31,6 +31,7 @@ class Settings(BaseSettings):
     # ── LINE Messaging API ───────────────────────────────────
     LINE_CHANNEL_SECRET: str = ""
     LINE_CHANNEL_ACCESS_TOKEN: str = ""
+    LINE_BOT_ID: str = "" # e.g. @famicare
 
     # ── LINE Login (OAuth) ───────────────────────────────────
     LINE_LOGIN_CHANNEL_ID: str = ""

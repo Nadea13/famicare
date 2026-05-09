@@ -50,14 +50,15 @@ services:
     container_name: famicare-backend
     restart: unless-stopped
     ports:
-      - "8000:8000"
+      - "8001:8000"
     environment:
       DATABASE_URL: postgresql+asyncpg://famicare:famicare_secret@postgres:5432/famicare_db
       APP_ENV: development
-      BACKEND_URL: http://localhost:8000
-      FRONTEND_URL: http://localhost:3000
+      BACKEND_URL: http://localhost:8001
+      FRONTEND_URL: http://localhost:3001
       UPLOAD_DIR: /app/uploads
       # Add other secrets as needed via .env or directly here
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     env_file:
       - ./backend/.env.local
     depends_on:
@@ -66,6 +67,25 @@ services:
     volumes:
       - ./backend/app:/app/app
       - ./backend/uploads:/app/uploads
+    networks:
+      - famicare-network
+
+  # ──────────────────────────────────────────────
+  # Frontend (Next.js)
+  # ──────────────────────────────────────────────
+  frontend:
+    build: ./frontend
+    container_name: famicare-frontend
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8001
+      NEXT_PUBLIC_LINE_LOGIN_URL: http://localhost:8001/auth/login
+    env_file:
+      - ./frontend/.env.local
+    depends_on:
+      - backend
     networks:
       - famicare-network
 

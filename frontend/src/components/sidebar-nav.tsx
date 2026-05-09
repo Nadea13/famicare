@@ -13,25 +13,28 @@ import {
 import { Separator } from "@/components/ui/separator";
 import {
   LayoutGrid,
-  Users,
-  FileText,
-  BriefcaseMedical,
-  Calendar,
-  Plus,
-  HelpCircle,
-  LogOut,
-  HeartPulse,
-  Home,
   Bell,
   Search,
+  Plus,
+  Settings,
+  Users,
+  Calendar,
+  Heart,
+  LogOut,
   UserPlus,
+  HeartPulse,
+  FileText,
+  BriefcaseMedical,
+  HelpCircle,
+  Home
 } from "lucide-react";
+import { InviteMemberDialog } from "./invite-member-dialog";
 import { api } from "@/lib/api";
 
 /* --- Navigation Items --- */
 
 const navItems = [
-  { href: "/home", label: "หน้าหลัก", icon: Home },
+  { href: "/home", label: "หน้าหลัก", icon: HeartPulse },
   { href: "/home/patients", label: "ผู้ป่วย", icon: UserPlus },
   { href: "/home/members", label: "สมาชิก", icon: Users },
   { href: "/home/medical-record", label: "ประวัติสุขภาพ", icon: FileText },
@@ -49,6 +52,7 @@ const secondaryNavItems = [
 function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
   const [user, setUser] = useState<{ display_name: string; picture_url: string; role: string } | null>(null);
+  const [isInviteOpen, setIsInviteOpen] = useState(false);
 
   useEffect(() => {
     async function loadProfile() {
@@ -103,9 +107,6 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
             <p className="text-sm font-bold text-foreground truncate">
               {user?.display_name || "กำลังโหลด..."}
             </p>
-            <p className="text-[10px] text-muted-foreground font-medium truncate uppercase">
-              {user?.role || "FamiCare User"}
-            </p>
           </div>
         </div>
       </div>
@@ -143,11 +144,18 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
         {/* Add Member Button */}
         <Button
           variant="default"
-          className="w-full py-6 text-lg"
+          className="w-full py-6 text-lg shadow-lg hover:shadow-xl transition-all duration-300 bg-primary hover:bg-primary/90"
+          onClick={() => setIsInviteOpen(true)}
         >
-          <Plus className="w-5 h-5 stroke-[2]" />
-          <span>เพิ่มสมาชิกในครอบครัว</span>
+          <UserPlus className="w-5 h-5 stroke-[2] mr-2" />
+          <span>เชิญสมาชิกเพิ่ม</span>
         </Button>
+
+        <InviteMemberDialog
+          isOpen={isInviteOpen}
+          onClose={() => setIsInviteOpen(false)}
+          patientId={user?.primary_patient_id}
+        />
 
         <div>
           {secondaryNavItems.map((item) => (
